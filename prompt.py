@@ -7,11 +7,11 @@ class Prompt:
         self.davinci_type_regex = "^type\s.{1,}$"
         self.chatgpt_type_regex = '^type\s[^"]{1,}$'
         self.press_regex = (
-            "^press\s(enter|arrowleft|arrowright|arrowup|arrowdown|backspace)$"
+            "^press\s(enter|arrowleft|arrowright|arrowup|arrowdown|backspace|tab)$"
         )
-        self.clickxpath_regex = "^clickxpath\s.{1,}$"
-        self.clickoption_regex = "^clickoption\s.{1,}$"
-        self.movemouse_regex = "^movemouse\s.{1,}$"
+        self.clickxpath_regex = "^clickxpath .{1,}$"
+        self.clickoption_regex = "^clickoption .{1,}$"
+        self.movemouse_regex = "^movemouse .{1,}$"
 
         if os.path.exists(f"prompt/{env}/"):
             base_dir = f"prompt/{env}/"

@@ -8,6 +8,7 @@ from llm_agent import LLMAgent
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.action_chains import ActionChains
+from selenium.webdriver.common.keys import Keys
 
 import logging
 
@@ -24,6 +25,7 @@ def parse_opt():
     parser.add_argument("--irci", type=int, default=1)
     parser.add_argument("--sgrounding", action="store_true", default=False)
     parser.add_argument("--headless", action="store_true", default=False)
+    parser.add_argument("--goal", type=str, default=None)
 
     opt = parser.parse_args()
 
@@ -43,12 +45,15 @@ def web(opt, url):
         llm_agent.update_html_state(html_body)
 
         # Set objective (e.g., login with id and pw)
-        goal = input("Type your command (type 'exit' to quit): ")
+        goal = opt.goal
+        if goal is None:
+            goal = input("Type your command (type 'exit' to quit): ")
         if goal == "exit":
             break
         llm_agent.set_goal(goal)
 
         llm_agent.initialize_plan()
+        print(llm_agent.current_plan)
 
         step = llm_agent.get_plan_step()
         logging.info(f"The number of generated action steps: {step}")
@@ -70,8 +75,96 @@ def get_html_state_from_real(driver, opt):
         html_body = driver.find_element(By.XPATH, main_html_xpath).get_attribute(
             "outerHTML"
         )
+    elif opt.env == "canada":
+        main_html_xpath = "//body"
+        html_body = driver.find_element(By.XPATH, main_html_xpath).get_attribute(
+            "outerHTML"
+        )
+        import re
+
+        html_body = re.sub(r"\n", " ", html_body)
+        html_body = re.sub(r"[\s]*<", r"<", html_body)
+        # html_body = re.sub(r'</div>', r'</div>\n', html_body)
+        html_body = re.sub(r"<div></div>", "", html_body)
+        # remove useless http attributes
+        html_body = re.sub(r' target="[^"]*"', "", html_body)
+        html_body = re.sub(r' class="[^"]*"', "", html_body)
+        html_body = re.sub(r' style="[^"]*"', "", html_body)
+        html_body = re.sub(r' autocomplete="[^"]*"', "", html_body)
+        html_body = re.sub(r' autofocus="[^"]*"', "", html_body)
+        html_body = re.sub(r' rel="[^"]*"', "", html_body)
+        html_body = re.sub(r' href="[^"]*"', "", html_body)
+        html_body = re.sub(r' xmlns="[^"]*"', "", html_body)
+        html_body = re.sub(r' tabindex="[^"]*"', "", html_body)
+        # remove style, script, img tags
+        html_body = re.sub(r"<style((?!<style).)*</style>", "", html_body)
+        html_body = re.sub(r"<script((?!<script).)*</script>", "", html_body)
+        html_body = re.sub(r"<img((?!</img>).)*</img>", "", html_body)
+        html_body = re.sub(r"<img[^>]*>", "", html_body)
+        html_body = re.sub(r"</img[^>]*>", "", html_body)
+        # remove other stuff
+        html_body = re.sub(r' data-[^=]*="[^"]*"', "", html_body)
+        html_body = re.sub(r' aria-[^=]*="[^"]*"', "", html_body)
+        html_body = re.sub(r' role="[^"]*"', "", html_body)
+        html_body = re.sub(r"<!--((?!-->).)*-->", "", html_body)
+        html_body = re.sub(r"<iframe((?!</iframe>).)*</iframe>", "", html_body)
+
+    elif opt.env == "googleflight":
+        main_html_xpath = '//*[@role="main"]/..'
+        html_body = driver.find_element(By.XPATH, main_html_xpath).get_attribute(
+            "outerHTML"
+        )
+
+        import re
+
+        html_body = re.sub(r"\n", " ", html_body)
+        # remove js attributes
+        html_body = re.sub(r' jscontroller="[^"]*"', "", html_body)
+        html_body = re.sub(r' jsname="[^"]*"', "", html_body)
+        html_body = re.sub(r' jsaction="[^"]*"', "", html_body)
+        html_body = re.sub(r' jsrenderer="[^"]*"', "", html_body)
+        html_body = re.sub(r' jsshadow="[^"]*"', "", html_body)
+        html_body = re.sub(r' jslog="[^"]*"', "", html_body)
+        html_body = re.sub(r' jsdata="[^"]*"', "", html_body)
+        html_body = re.sub(r' jsmodel="[^"]*"', "", html_body)
+        html_body = re.sub(r' jsslot="[^"]*"', "", html_body)
+        html_body = re.sub(r' jsowner="[^"]*"', "", html_body)
+        # remove useless http attributes
+        html_body = re.sub(r' target="[^"]*"', "", html_body)
+        html_body = re.sub(r' class="[^"]*"', "", html_body)
+        html_body = re.sub(r' style="[^"]*"', "", html_body)
+        html_body = re.sub(r' autocomplete="[^"]*"', "", html_body)
+        html_body = re.sub(r' autofocus="[^"]*"', "", html_body)
+        html_body = re.sub(r' rel="[^"]*"', "", html_body)
+        html_body = re.sub(r' href="[^"]*"', "", html_body)
+        html_body = re.sub(r' xmlns="[^"]*"', "", html_body)
+        html_body = re.sub(r' tabindex="[^"]*"', "", html_body)
+        # remove accessibility attributes
+        html_body = re.sub(r' aria-[^=]*="[^"]*"', "", html_body)
+        # remove data attributes
+        # html_body = re.sub(r' data-ved="[^"]*"', '', html_body)
+        # html_body = re.sub(r' data-hveid="[^"]*"', '', html_body)
+        html_body = re.sub(r' data-[^=]*="[^"]*"', "", html_body)
+        # remove svgs
+        html_body = re.sub(r"<svg((?!<svg).)*</svg>", "", html_body)
+        # remove (non-nested) anonymous html containers
+        while True:
+            html_body, replacements = re.subn(
+                r"<div>(((?!<div).)*)</div>", r"\g<1>", html_body
+            )
+            if replacements == 0:
+                break
+        while True:
+            html_body, replacements = re.subn(
+                r"<span>(((?!<span).)*)</span>", r"\g<1>", html_body
+            )
+            if replacements == 0:
+                break
     else:
         raise NotImplemented
+
+    with open("html_body.xml", "w") as f:
+        f.write(html_body)
 
     return html_body
 
@@ -94,17 +187,25 @@ def perform_instruction(driver, instruction):
         chain.move_to_element(element).click().perform()
     elif inst_type == "press":
         key_type = instruction[1]
+        key_type = key_type.lower()
         # TODO: press special key
-        if key_type == "enter":
-            chain = ActionChains(driver)
-            chain.send_keys("\n")
-            chain.perform()
-        elif key_type == "space":
-            chain = ActionChains(driver)
-            chain.send_keys(" ")
-            chain.perform()
-        else:
+        keys = {
+            "enter": Keys.ENTER,
+            "space": Keys.SPACE,
+            "backspace": Keys.BACKSPACE,
+            "arrowleft": Keys.LEFT,
+            "arrowright": Keys.RIGHT,
+            "arrowup": Keys.UP,
+            "arrowdown": Keys.DOWN,
+            "tab": Keys.TAB,
+        }
+        if not key_type in keys:
             raise NotImplemented
+
+        chain = ActionChains(driver)
+        chain.send_keys(keys[key_type])
+        chain.perform()
+
     else:
         raise ValueError("Invalid instruction")
 
@@ -114,11 +215,12 @@ def get_webdriver(url):
     # options.add_argument("headless")
     options.add_argument("disable-gpu")
     options.add_argument("no-sandbox")
+    options.add_argument("window-size=720")
 
-    driver = webdriver.Chrome(chrome_options=options)
-    driver.implicitly_wait(5)
-    driver.maximize_window()
-    driver.implicitly_wait(5)
+    driver = webdriver.Chrome(options=options)
+    # driver.implicitly_wait(5)
+    # driver.maximize_window()
+    # driver.implicitly_wait(5)
 
     driver.get(url)
     driver.implicitly_wait(10)
@@ -207,7 +309,14 @@ def get_html_state(opt, states):
 
 if __name__ == "__main__":
     opt = parse_opt()
-    if opt.env == "facebook":
+    if opt.env == "googleflight":
+        url = "https://www.google.com/travel/flights?hl=en"
+        web(opt, url)
+    elif opt.env == "canada":
+        # url = "https://www.canada.ca/en.html"
+        url = "https://www.canada.ca/en.html?wbdisable=true"
+        web(opt, url)
+    elif opt.env == "facebook":
         url = "https://www.facebook.com/"
         web(opt, url)
     else:

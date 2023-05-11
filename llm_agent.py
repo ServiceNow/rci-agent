@@ -63,6 +63,8 @@ class LLMAgent:
             openai.api_key = api_key
         if self.llm == "chatgpt":
             self.model = "gpt-3.5-turbo"
+        elif self.llm == "gpt-4":
+            self.model = "gpt-4"
         elif self.llm == "davinci":
             self.model = "text-davinci-003"
         elif self.llm == "ada":
@@ -240,7 +242,7 @@ class LLMAgent:
 
         while True:
             try:
-                if self.llm == "chatgpt":
+                if self.llm in ("chatgpt", "gpt-4"):
                     time.sleep(1)
                     response = openai.ChatCompletion.create(
                         model=self.model,
@@ -274,7 +276,7 @@ class LLMAgent:
             except Exception as e:
                 print(e)
                 if "maximum context" in str(e):
-                    raise ValueError
+                    raise ValueError("Context is too long.")
                 time.sleep(10)
             else:
                 if message:
@@ -377,6 +379,8 @@ class LLMAgent:
                 return MiniWoBType(Keys.UP)
             elif key_type == "arrowdown":
                 return MiniWoBType(Keys.DOWN)
+            elif key_type == "tab":
+                return MiniWoBType(Keys.TAB)
             else:
                 raise NotImplemented
         elif inst_type == "movemouse":
